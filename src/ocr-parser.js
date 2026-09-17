@@ -17,6 +17,9 @@ export function parsedNumber(raw) {
   return Number(s)||0;
 }
 
+// Invoices keep exactly two decimal places. Extra digits are discarded, never rounded.
+const money2=(value)=>Math.trunc((Number(value||0)+Number.EPSILON)*100)/100;
+
 function section(text){
   const start=text.search(/Line\s*Items/i);if(start<0)return text;
   const part=text.slice(start);const end=part.search(/Total\s*Sales\s*\(?(?:EGP|£6)/i);
@@ -26,7 +29,7 @@ function section(text){
 function candidatesFrom(text,total){
   const body=section(text);
   return [...body.matchAll(/\b\d[\d.,]*\d\b/g)]
-    .map(x=>Math.round(parsedNumber(x[0])))
+    .map(x=>money2(parsedNumber(x[0])))
     .filter(n=>n>=20&&n<=total+1);
 }
 
@@ -36,7 +39,7 @@ function hintValues(text,total){
     if(!/(Accommodation|Food\s*(?:and|&)\s*Drink|Laundry)/i.test(lines[i]))continue;
     const nearby=lines.slice(i,i+4).join(' ');
     for(const m of nearby.matchAll(/\b\d[\d.,]*\d\b/g)){
-      const n=Math.round(parsedNumber(m[0]));if(n>=20&&n<=total)hints.push(n);
+      const n=money2(parsedNumber(m[0]));if(n>=20&&n<=total)hints.push(n);
     }
   }
   return hints;
@@ -53,14 +56,14 @@ function findCombination(values,count,total,hints){
       picked.push(nums[i]);walk(i,picked,sum+nums[i]);picked.pop();
     }
   }
-  walk(0,[],0);return bestDiff<=1?best:null;
+  walk(0,[],0);return bestDiff<=.02?best:null;
 }
 
 function findTotal(texts){
   const found=[];
   for(const text of texts){
     for(const m of text.matchAll(/Total\s*Amount\s*\(?(?:EGP|£6)\)?[^\d]{0,12}([\d.,]+)/gi)){
-      const n=Math.round(parsedNumber(m[1]));if(n>0)found.push(n);
+      const n=money2(parsedNumber(m[1]));if(n>0)found.push(n);
     }
   }
   if(!found.length)return 0;
@@ -112,9 +115,10 @@ export function parseInvoiceOcr(texts,descriptionText=''){
     else if(hasLaundry){laundry=sorted[0];accommodation=sorted[1];}
     else {restaurant=sorted[0];accommodation=sorted[1];}
   }
-  const sum=Number(accommodation||0)+Number(restaurant||0)+Number(laundry||0);
+  accommodation=accommodation===''?'':money2(accommodation);restaurant=restaurant===''?'':money2(restaurant);laundry=laundry===''?'':money2(laundry);
+  const sum=money2(Number(accommodation||0)+Number(restaurant||0)+Number(laundry||0));
   const guestInfo=guestFromDescription(descriptionText);const guestCount=guestInfo.name?guestInfo.count:1;
-  return {invoiceNo:internal,invoiceDate:issuance.replaceAll('/','-'),companyTax,guest:guestInfo.name||guestFrom(texts.find(t=>/Accommodation/i.test(t))||all),single:guestCount===1?1:0,double:guestCount===2?1:0,triple:guestCount>=3?1:0,nights,roomRate:accommodation&&nights?Math.round((accommodation/nights)*100)/100:'',accommodation,restaurant,laundry,total,verified:Boolean(total&&combo&&Math.abs(sum-total)<=1)};
+  return {invoiceNo:internal,invoiceDate:issuance.replaceAll('/','-'),companyTax,guest:guestInfo.name||guestFrom(texts.find(t=>/Accommodation/i.test(t))||all),single:guestCount===1?1:0,double:guestCount===2?1:0,triple:guestCount>=3?1:0,nights,roomRate:accommodation&&nights?money2(accommodation/nights):'',accommodation,restaurant,laundry,total:money2(total),verified:Boolean(total&&combo&&Math.abs(sum-total)<=.02)};
 }
 
 function cleanGuest(raw=''){
@@ -142,8 +146,8 @@ export function parseGuestFolioOcr(texts){
   const guest=cleanGuest(all.match(/Guest\s*:\s*([^\n]+)/i)?.[1]||'');
   const rooming=all.match(/Rooming\s*:\s*([^\n]+)/i)?.[1]||'';
   const single=Number(rooming.match(/(\d+)\s*Sgl/i)?.[1]||0),double=Number(rooming.match(/(\d+)\s*(?:Dbl|Double)/i)?.[1]||0),triple=Number(rooming.match(/(\d+)\s*(?:Tpl|Triple)/i)?.[1]||0);
-  const accommodation=Math.round(lastMoneyBefore(all,/Main\s+(?:Restaurant|Rest\.)/i)*100)/100;
+  const accommodation=money2(lastMoneyBefore(all,/Main\s+(?:Restaurant|Rest\.)/i));
   const totalMatches=[...all.matchAll(/(?:Total\s+)?(\d{1,6}[.,]\d{2})/gi)].map(m=>parsedNumber(m[1]));
   const total=Math.max(0,...totalMatches.filter(n=>n<100000));
-  return {roomNo,guest,checkIn,actualCheckOut,printedCheckOut,single,double,triple,accommodation,total,billNo:all.match(/Bill\s*No\.?\s*:\s*(\d+)/i)?.[1]||''};
+  return {roomNo,guest,checkIn,actualCheckOut,printedCheckOut,single,double,triple,accommodation,total:money2(total),billNo:all.match(/Bill\s*No\.?\s*:\s*(\d+)/i)?.[1]||''};
 }
