@@ -1,11 +1,7 @@
+import {roundMoney,moneyCents} from './money.js';
 // Pure, testable checks used both by the review screen and export actions.
-export const amount = value => {
-  const text=String(value??'').replace(/,/g,'').trim();
-  if(!text)return 0;
-  const match=text.match(/^(-?\d+)(?:\.(\d+))?$/);
-  return match ? Number(match[1])+Math.sign(Number(match[1])||1)*Number((match[2]||'').slice(0,2).padEnd(2,'0'))/100 : NaN;
-};
-export const cents = value => Math.trunc((Number(value||0)+Number.EPSILON)*100);
+export const amount = value => roundMoney(value);
+export const cents = value => moneyCents(value);
 export const dateValue = value => {
   const m=String(value||'').match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
   if(!m)return null;

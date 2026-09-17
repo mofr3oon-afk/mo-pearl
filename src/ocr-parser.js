@@ -1,3 +1,4 @@
+import {roundMoney} from './money.js';
 export function parsedNumber(raw) {
   let s=String(raw||'').replace(/\s/g,'').replace(/[^\d.,]/g,'');
   if(!s)return 0;
@@ -17,8 +18,8 @@ export function parsedNumber(raw) {
   return Number(s)||0;
 }
 
-// Invoices keep exactly two decimal places. Extra digits are discarded, never rounded.
-const money2=(value)=>Math.trunc((Number(value||0)+Number.EPSILON)*100)/100;
+// Round all extracted monetary figures to exactly two decimals.
+const money2=roundMoney;
 
 function section(text){
   const start=text.search(/Line\s*Items/i);if(start<0)return text;
