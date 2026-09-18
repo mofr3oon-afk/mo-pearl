@@ -50,3 +50,9 @@ npm run dev
 - التصدير والطباعة يتوقفان عند تضارب رقم PO الذي تم التعرف عليه حتى تُراجع الرقم.
 
 شغّل `npm ci && npm run build` في بيئة يتوفر فيها الإنترنت والمكتبات قبل النشر على Vercel. الاختبار الآلي لا يحل محل اختبار صور فواتير واقعية.
+
+### V14 review and limits
+- Guest Folio: add multiple images or Excel (.xlsx); Excel cell text is extracted locally. PDF files can be selected and previewed but **are not automatically extracted**; convert PDF pages to images for OCR.
+- Previous invoice history now offers a spreadsheet-style preview, with a button to open for editing/export; original invoice photos are not stored in history.
+- Print uses the same invoice-layout preview on A4 (browser print / Save as PDF); Web Share API is attempted on devices that support sharing .xlsx, otherwise the file downloads.
+- Browser print dialogs and share targets require real-device testing: unavailable here. Previously stored drafts still only retain the first Guest Folio image.
